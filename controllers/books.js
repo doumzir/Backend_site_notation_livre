@@ -4,12 +4,14 @@ const Book = require('../models/Book');
 exports.createBook = (req, res, next) => {
   const bookObject = JSON.parse(req.body.book);
 
+  // eslint-disable-next-line no-underscore-dangle
   delete bookObject._id;
+  // eslint-disable-next-line no-underscore-dangle
   delete bookObject._userId;
   const book = new Book({
     ...bookObject,
     userId: req.auth.userId,
-    imageURl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
+    imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
   });
   book.save().then(
     () => {
@@ -18,7 +20,8 @@ exports.createBook = (req, res, next) => {
       });
     },
   ).catch(
-    (error) => { console.log(book);
+    (error) => {
+      console.log(book);
       res.status(400).json({
         error,
       });
