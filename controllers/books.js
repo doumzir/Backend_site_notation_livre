@@ -100,3 +100,58 @@ exports.getAllBook = (req, res, next) => {
     },
   );
 };
+
+exports.getTopRatedBooks = (req, res, next) => {
+  Book.find().sort({ averageRating: -1 }).limit(3).then(
+    (book) => {
+      res.status(200).json(book);
+    },
+    (error) => {
+
+      res.status(400).json({
+        error,
+      });
+    },
+  );
+};
+
+exports.addRating = (req, res, next) => {
+  const bookId = req.params._id;
+  const { userId } = req.auth;
+  const { grade } = req.body;
+
+  // Vérifier que la note est comprise entre 0 et 5
+  if (grade < 0 || grade > 5) {
+    return res.status(400).json({ error: 'La note doit être comprise entre 0 et 5' });
+  }
+
+  // Trouver le livre correspondant à l'id
+  Book.findById(bookId).then((book) => {
+    if (!book) {
+      return res.status(404).json({ error: 'Livre non trouvé' });
+    }
+
+    // Vérifier que l'utilisateur n'a pas déjà noté le livre
+    const userRating = book.ratings.find((rating) => rating.userId === userId);
+    if (userRating) {
+      return res.status(400).json({ error: "L'utilisateur a déjà noté ce livre" });
+    }
+
+    // Ajouter la note et l'id utilisateur au tableau de notes du livre
+    book.ratings.push({ userId, grade });
+
+    // Calculer la nouvelle moyenne des notes
+    const sumRatings = book.ratings.reduce((sum, rating) => sum + rating.grade, 0);
+    // eslint-disable-next-line no-param-reassign
+    book.averageRating = sumRatings / book.ratings.length;
+
+    // Sauvegarder les modifications dans la base de données
+    book.save().then(() => {
+      res.status(200).json(book);
+    }).catch((error) => {
+      res.status(400).json({ error });
+    });
+  }).catch((error) => {
+    res.status(400).json({ error });
+  });
+};
