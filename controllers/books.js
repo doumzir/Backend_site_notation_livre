@@ -29,20 +29,29 @@ exports.createBook = (req, res, next) => {
   );
 };
 
-exports.getOneBook = (req, res, next) => {
-  Book.findOne({
-    _id: req.params.id,
-  }).then(
-    (book) => {
-      res.status(200).json(book);
-    },
-  ).catch(
-    (error) => {
-      res.status(404).json({
-        error,
+exports.getOneBook = (req, res, next) => { const bookId = req.params.id;
+
+  if (bookId === 'bestrating') {
+    Book.find().sort({ averageRating: -1 }).limit(3)
+      .then((books) => {
+        res.status(200).json(books);
+      })
+      .catch((error) => {
+        res.status(400).json({ error });
       });
-    },
-  );
+  } else {
+    Book.findOne({ _id: bookId })
+      .then((book) => {
+        if (!book) {
+          res.status(404).json({ error: 'Livre non trouvé' });
+        } else {
+          res.status(200).json(book);
+        }
+      })
+      .catch((error) => {
+        res.status(400).json({ error });
+      });
+  }
 };
 
 exports.modifyBook = (req, res, next) => {
@@ -101,57 +110,60 @@ exports.getAllBook = (req, res, next) => {
   );
 };
 
-exports.getTopRatedBooks = (req, res, next) => {
-  Book.find().sort({ averageRating: -1 }).limit(3).then(
-    (book) => {
-      res.status(200).json(book);
-    },
-    (error) => {
-
-      res.status(400).json({
-        error,
-      });
-    },
-  );
-};
 
 exports.addRating = (req, res, next) => {
-  const bookId = req.params._id;
+  const bookId = req.params.id;
   const { userId } = req.auth;
-  const { grade } = req.body;
+  const { rating } = req.body;
 
   // Vérifier que la note est comprise entre 0 et 5
-  if (grade < 0 || grade > 5) {
+  if (rating < 0 || rating > 5) {
     return res.status(400).json({ error: 'La note doit être comprise entre 0 et 5' });
   }
 
   // Trouver le livre correspondant à l'id
-  Book.findById(bookId).then((book) => {
-    if (!book) {
-      return res.status(404).json({ error: 'Livre non trouvé' });
-    }
+  Book.findById(bookId)
+    .then((book) => {
+      if (!book) {
+        return res.status(404).json({ error: 'Livre non trouvé' });
+      }
 
-    // Vérifier que l'utilisateur n'a pas déjà noté le livre
-    const userRating = book.ratings.find((rating) => rating.userId === userId);
-    if (userRating) {
-      return res.status(400).json({ error: "L'utilisateur a déjà noté ce livre" });
-    }
+      // Vérifier que l'utilisateur n'a pas déjà noté le livre
+      const userRating = book.ratings.find((rating) => rating.userId === userId);
+      if (userRating) {
+        return res.status(400).json({ error: "L'utilisateur a déjà noté ce livre" });
+      }
 
-    // Ajouter la note et l'id utilisateur au tableau de notes du livre
-    book.ratings.push({ userId, grade });
+      // Ajouter la note et l'id utilisateur au tableau de notes du livre
+      book.ratings.push({ userId, grade: rating });
 
-    // Calculer la nouvelle moyenne des notes
-    const sumRatings = book.ratings.reduce((sum, rating) => sum + rating.grade, 0);
-    // eslint-disable-next-line no-param-reassign
-    book.averageRating = sumRatings / book.ratings.length;
+      // Calculer la nouvelle moyenne des notes
+      const sumRatings = book.ratings.reduce((sum, rating) => sum + rating.grade, 0);
+      book.averageRating = sumRatings / book.ratings.length;
 
-    // Sauvegarder les modifications dans la base de données
-    book.save().then(() => {
+      // Sauvegarder les modifications dans la base de données
+      return book.save();
+    })
+    .then((book) => {
       res.status(200).json(book);
-    }).catch((error) => {
+    })
+    .catch((error) => {
       res.status(400).json({ error });
     });
-  }).catch((error) => {
-    res.status(400).json({ error });
-  });
+};
+exports.getTopRatedBooks = (req, res, next) => {
+  console.log('test');
+  Book.find().limit(3).then(
+    (books) => {
+      res.status(200).json(books);
+    },
+  )
+    .catch((error) => {
+      console.log(error);
+      if (error.name === 'CastError' && error.path === '_id') {
+        res.status(404).json({ error: "Route '/bestrating' not found" });
+      } else {
+        res.status(400).json({ error });
+      }
+    });
 };
