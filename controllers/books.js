@@ -1,21 +1,53 @@
 // in controllers/stuff.js
+/*
+const compressImg = require('../middleware/multer-config'); */
+const fs = require('fs');
+const sharp = require('sharp');
 const Book = require('../models/Book');
 
-exports.createBook = (req, res, next) => {
+const compressImg = async (file) => {
+  fs.access('./images', (error) => {
+    if (error) {
+      console.log('chemin non');
+      fs.mkdirSync('./images');
+    }
+  });
+
+  const { buffer, originalname } = file;
+  console.log('file:', file);
+  console.log('name', originalname);
+  const timestamp = new Date().toISOString();
+  const ref = `${timestamp}-${originalname}.webp`;
+
+  await sharp(buffer)
+    .webp({ quality: 20 })
+    .toFile(`./images/${ref}`);
+  const link = `${ref}`;
+  console.log('link:', link);
+  return link;
+};
+
+exports.createBook = async (req, res, next) => {
+  const compressedImageUrl = await compressImg(req.file);
   const bookObject = JSON.parse(req.body.book);
 
   // eslint-disable-next-line no-underscore-dangle
   delete bookObject._id;
   // eslint-disable-next-line no-underscore-dangle
   delete bookObject._userId;
+
   const book = new Book({
     ...bookObject,
     userId: req.auth.userId,
-    imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
+    imageUrl: `${req.protocol}://${req.get('host')}/images/${compressedImageUrl}`,
+
   });
+
   book.save().then(
     () => {
+      console.log(book);
       res.status(201).json({
+
         message: 'book saved successfully!',
       });
     },
@@ -29,7 +61,8 @@ exports.createBook = (req, res, next) => {
   );
 };
 
-exports.getOneBook = (req, res, next) => { const bookId = req.params.id;
+exports.getOneBook = (req, res, next) => {
+  const bookId = req.params.id;
 
   if (bookId === 'bestrating') {
     Book.find().sort({ averageRating: -1 }).limit(3)
@@ -109,7 +142,6 @@ exports.getAllBook = (req, res, next) => {
     },
   );
 };
-
 
 exports.addRating = (req, res, next) => {
   const bookId = req.params.id;

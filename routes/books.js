@@ -1,13 +1,13 @@
 const express = require('express');
 
 const router = express.Router();
-const auth = require('../middleware/auth');
-const multer = require('../middleware/multer-config');
-
+const auth = require('../middleware/auth');/*
+const multer = require('../middleware/multer-config');*/
+const { upload, compressImg } = require('../middleware/multer-config');
 const bookCtrl = require('../controllers/books');
 
 router.get('/', bookCtrl.getAllBook);
-router.post('/', auth, multer, bookCtrl.createBook);
+router.post('/', auth, upload.single('image'), bookCtrl.createBook);
 
 
 /*
