@@ -13,7 +13,7 @@ router.post('/', auth, upload.single('image'), bookCtrl.createBook);
 /*
 router.post('/:id/rating', auth bookCtrl.createSpecialRating);*/
 router.get('/:id', bookCtrl.getOneBook);
-router.put('/:id', auth, bookCtrl.modifyBook);
+router.put('/:id', auth, upload.single('image'), bookCtrl.modifyBook);
 router.delete('/:id', auth, bookCtrl.deleteBook);
 router.post('/:id/rating', auth, bookCtrl.addRating);
 router.get('/bestrating', bookCtrl.getOneBook);
