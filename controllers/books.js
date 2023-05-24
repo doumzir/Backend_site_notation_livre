@@ -88,8 +88,27 @@ exports.getOneBook = (req, res, next) => {
 };
 exports.modifyBook = async (req, res, next) => {
   let compressedImageUrl;
+  const livreId = req.params.id;
 
   if (req.file !== undefined) {
+    const livre = await Book.findById(livreId);
+
+    if (!livre) {
+      return res.status(404).send('Livre non trouvé');
+    }
+
+    const ancienCheminImage = livre.imageUrl.split('/images/')[1];;
+    console.log(ancienCheminImage);
+
+
+    fs.unlink(`images/${ancienCheminImage}`, (err) => {
+      if (err) {
+        console.error('Erreur lors de la suppression de l\'ancienne image :', err);
+      } else {
+        console.log('Ancienne image supprimée avec succès');
+      }
+    });
+
     compressedImageUrl = await compressImg(req.file);
   }
 
